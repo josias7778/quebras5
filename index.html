@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registro por Voz - Individual</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .campo {
+      margin-bottom: 12px;
+    }
+    .label {
+      display: inline-block;
+      width: 180px;
+      font-weight: bold;
+    }
+    .valor {
+      display: inline-block;
+      min-width: 200px;
+      padding: 6px;
+      background-color: #f2f2f2;
+      border-radius: 4px;
+    }
+    button {
+      margin-left: 10px;
+    }
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Registro por Voz</h1>
+
+  <div class="campo">
+    <span class="label">Linha:</span>
+    <span id="linha" class="valor"></span>
+    <button onclick="startRecognition('linha')">🎤 Falar</button>
+  </div>
+
+  <div class="campo">
+    <span class="label">Código da Peça:</span>
+    <span id="codigo" class="valor"></span>
+    <button onclick="startRecognition('codigo')">🎤 Falar</button>
+  </div>
+
+  <div class="campo">
+    <span class="label">Tipo da Peça:</span>
+    <span id="tipo" class="valor"></span>
+    <button onclick="startRecognition('tipo')">🎤 Falar</button>
+  </div>
+
+  <div class="campo">
+    <span class="label">Local de Instalação:</span>
+    <span id="local" class="valor"></span>
+    <button onclick="startRecognition('local')">🎤 Falar</button>
+  </div>
+
+  <div class="campo">
+    <span class="label">Observação:</span>
+    <span id="obs" class="valor"></span>
+    <button onclick="startRecognition('obs')">🎤 Falar</button>
+  </div>
+
+  <button onclick="sendData()">📤 Enviar para Planilha</button>
+
+  <div id="status"></div>
+
+  <script>
+    let dados = {
+      linha: '',
+      codigo: '',
+      tipo: '',
+      local: '',
+      obs: ''
+    };
+
+    function startRecognition(campo) {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert('Use o Google Chrome no Android ou PC.');
+        return;
+      }
+
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = 'pt-BR';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      document.getElementById('status').innerText = `🎙️ Fale o campo: ${campo}`;
+
+      recognition.onresult = function (event) {
+        const texto = event.results[0][0].transcript.trim();
+        dados[campo] = texto;
+        document.getElementById(campo).innerText = texto;
+        document.getElementById('status').innerText = `✅ ${campo} registrado: ${texto}`;
+      };
+
+      recognition.onerror = function (event) {
+        document.getElementById('status').innerText = '❌ Erro: ' + event.error;
+      };
+
+      recognition.start();
+    }
+
+    function sendData() {
+      const { linha, codigo, tipo, local, obs } = dados;
+      if (!linha || !codigo || !tipo || !local) {
+        alert('Preencha todos os campos obrigatórios (linha, código, tipo, local).');
+        return;
+      }
+
+      const agora = new Date();
+      const payload = {
+        aba: "Registros",
+        linha,
+        codigo,
+        tipo,
+        local,
+        obs,
+        data: agora.toLocaleDateString('pt-BR'),
+        hora: agora.toLocaleTimeString('pt-BR')
+      };
+
+      fetch('https://script.google.com/macros/s/AKfycbyNgg2Jfdb50B49ox3ONa-cKc0oiXWTswC79ZgGbk1Eaaynipa_SI6YsjLFA-SQ7CYSBQ/exec', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+        .then(res => res.text())
+        .then(txt => {
+          document.getElementById('status').innerText = '✅ Dados enviados com sucesso!';
+          Object.keys(dados).forEach(k => {
+            dados[k] = '';
+            document.getElementById(k).innerText = '';
+          });
+        })
+        .catch(err => {
+          document.getElementById('status').innerText = '❌ Erro ao enviar: ' + err;
+        });
+    }
+  </script>
+</body>
+</html>
